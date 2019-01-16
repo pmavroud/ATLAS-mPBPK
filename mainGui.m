@@ -22,7 +22,7 @@ function varargout = mainGui(varargin)
 
 % Edit the above text to modify the response to help mainGui
 
-% Last Modified by GUIDE v2.5 18-Oct-2018 23:11:11
+% Last Modified by GUIDE v2.5 14-Jan-2019 17:31:59
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -387,7 +387,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
     s.tfinal=str2num(handles.edittfinal.String);
     
     % Run simulation
-    if handles.radiobuttonPO.Value==1    % Oral administration
+    if handles.radiobuttonPO.Value==1    % Oral administration (PO)
         [t,y]=ode23(@(t,y)minPBPKoral(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.V1;
@@ -407,6 +407,13 @@ if handles.popupmenuModel.Value==1          % If small molecules
         y(:,2)=y(:,2)./s.V1;
         y(:,3)=y(:,3)./s.V2;
         y(:,4)=y(:,4)./s.Vhep;
+    end
+    if handles.radiobuttonEV.Value==1    % Extravascular administration (EV)
+        [t,y]=ode23(@(t,y)minPBPKev(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
+        y(:,1)=y(:,1)./s.Vp;
+        y(:,2)=y(:,2)./s.V1;
+        y(:,3)=y(:,3)./s.V2;
+        y(:,4)=y(:,4)./s.Vp;
     end
     
     
@@ -430,7 +437,7 @@ else    % Else large molecule model
     s.ksyn=str2num(handles.edit11.String);       %ksyn
     s.kdeg=str2num(handles.edit14.String);       %kdeg
     s.kint=str2num(handles.edit15.String);       %kint
-    
+     
     s.L1=0.33*s.L;                               %L1
     s.L2=0.67*s.L;                               %L2
     s.Vtight=0.65*s.ISF*s.Kp;                    %Vtight
@@ -465,8 +472,8 @@ else    % Else large molecule model
     end
 
     % Run simulation
-    if handles.radiobuttonPO.Value==1    % Oral administration
-        [t,y]=ode23(@(t,y)minPBPKlargePO(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
+    if handles.radiobuttonEV.Value==1    % Extravascluar administration
+        [t,y]=ode23(@(t,y)minPBPKlargeEV(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.Vtight;
         y(:,3)=y(:,3)./s.Vtight;
@@ -608,6 +615,28 @@ dy(4)=s.Qhep*(y(1)/s.Vp-(y(4)/s.Vhep)/s.Kp)-(y(4)/s.Vhep)/s.Kp*s.CLintu;   % Amo
 dy=dy';
 
 
+% --- mPBPK MODEL small molecules extravascular
+function [dy]=minPBPKev(t,y,s)
+
+% Differential equations
+dy(1)=s.fd1*(s.Qco-s.Qhep)*(y(2)/s.V1)/s.Kp...
+    +s.fd2*(s.Qco-s.Qhep)*(y(3)/s.V2)/s.Kp...
+    +s.Qhep*((y(4)/s.Vhep)/s.Kp-y(1)/s.Vp)...
+    -y(1)/s.Vp*(s.fd1*(s.Qco-s.Qhep)+s.fd2*(s.Qco-s.Qhep)+s.CLnh)...
+    +s.ka*s.Fg*y(5);                                                       % Amount in Plasma
+
+dy(2)=s.fd1*(s.Qco-s.Qhep)*(y(1)/s.Vp-(y(2)/s.V1)/s.Kp);                   % Amount in Tissue 1
+
+dy(3)=s.fd2*(s.Qco-s.Qhep)*(y(1)/s.Vp-(y(3)/s.V2)/s.Kp);                   % Amount in Tissue 2
+
+dy(4)=s.Qhep*(y(1)/s.Vp-(y(4)/s.Vhep)/s.Kp)-(y(4)/s.Vhep)/s.Kp*s.CLintu;                                                       % Amount in Liver Tissue
+
+
+dy(5)=-s.ka*y(5);                                                          % EV depot
+
+dy=dy';
+
+
 
 % --- mPBPK MODEL large molecules IV
 function dy=minPBPKlarge(t,y,s)
@@ -668,8 +697,8 @@ dy=dy';
 
 
 
-% --- mPBPK MODEL large molecules oral
-function dy=minPBPKlargePO(t,y,s)
+% --- mPBPK MODEL large molecules extravascular
+function dy=minPBPKlargeEV(t,y,s)
 % Algebraic equations
     
     Cpt= y(1)/s.Vp;     % Total drug in plasma
@@ -955,8 +984,8 @@ if handles.popupmenuModel.Value==1          % If small molecules
     end
     s.V2=s.BW-s.V1-s.Vp-s.Vhep;
     
-    % For oral administration
-    s.Fg=str2num(handles.edit12.String);       %CLnon-hep
+    % For oral/extravascular administration
+    s.Fg=str2num(handles.edit12.String);       %Fg
     if cbv(12)==1
         p(x)=s.Fg;
         x=x+1;
@@ -967,7 +996,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
         set(handles.editCIp12, 'String', '')
         set(handles.editlbub12, 'String', '')
     end
-    s.ka=str2num(handles.edit13.String);       %CLnon-hep
+    s.ka=str2num(handles.edit13.String);       %ka
     if cbv(13)==1
         p(x)=s.ka;
         x=x+1;
@@ -1055,7 +1084,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
         ub(x)=str2num(lbub{x,2});
         x=x+1;
     end
-    % For oral
+    % For oral/extravascular
     if isempty(get(handles.editlbub12,'String'))==0
         lbub(x,:)=strsplit(get(handles.editlbub12,'String'),',');
         lb(x)=str2num(lbub{x,1});
@@ -1174,7 +1203,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
         x=x+1;
     end
     
-    % For oral administration
+    % For oral/extravascular administration
     if cbv(12)==1
         set(handles.editEp12, 'BackgroundColor', [1,1,1]);
         set(handles.editEp12, 'String', obj(x));
@@ -1214,7 +1243,7 @@ else     % large molecules
     cbv(9)=get(handles.checkbox9,'Value');
     cbv(10)=get(handles.checkbox10,'Value');
     cbv(11)=get(handles.checkbox11,'Value');
-    % For oral administration
+    % For oral/extravascular administration
     cbv(12)=get(handles.checkbox12,'Value');
     cbv(13)=get(handles.checkbox13,'Value');
     % Back to IV
@@ -1365,7 +1394,7 @@ else     % large molecules
         set(handles.editCIp11, 'String', '')
         set(handles.editlbub11, 'String', '')
     end
-    % For oral administration
+    % For oral/extravascular administration
     s.Fg=str2num(handles.edit12.String);       %Fg
     if cbv(12)==1
         p(x)=s.Fg;
@@ -1640,7 +1669,7 @@ else     % large molecules
         x=x+1;
     end
     
-    % For oral administration
+    % For oral/extravascular administration
     if cbv(12)==1
         set(handles.editEp12, 'BackgroundColor', [1,1,1]);
         set(handles.editEp12, 'String', obj(x));
@@ -1738,7 +1767,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
     end
     s.V2=s.BW-s.V1-s.Vp-s.Vhep;
     
-    % For oral administration
+    % For oral/extravascular administration
     if cbv(12)==1
         s.Fg=p(x);
         x=x+1;
@@ -1769,12 +1798,23 @@ if handles.popupmenuModel.Value==1          % If small molecules
         y(:,3)=y(:,3)./s.V2;
         y(:,4)=y(:,4)./s.Vhep;
     end
+    if handles.radiobuttonEV.Value==1
+        [t,y]=ode23(@(t,y)minPBPKev(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
+        y(:,1)=y(:,1)./s.Vp;
+        y(:,2)=y(:,2)./s.V1;
+        y(:,3)=y(:,3)./s.V2;
+        y(:,4)=y(:,4)./s.Vhep;
+    end
+
     iny=interp1(t,y(:,1),data.x);
     % err1=sum((log10(data.y)-log10(iny)).^2); % for fmincon
     if handles.radiobuttonPO.Value==1 % Oral
         err1=(((data.y)-(iny)).^2);
-    else
-        err1=((log10(data.y)-log10(iny)).^2);
+    else if handles.radiobuttonEV.Value==1 % Oral
+            err1=(((data.y)-(iny)).^2);
+        else
+            err1=((log10(data.y)-log10(iny)).^2);
+        end
     end
     
     
@@ -1851,7 +1891,7 @@ else   % large molecules
         x=x+1;
     end
     
-    % For oral administration
+    % For oral/extravascular administration
     if cbv(12)==1
         s.Fg=p(x);
         x=x+1;
@@ -1873,8 +1913,8 @@ else   % large molecules
     
     
     
-    if handles.radiobuttonPO.Value==1    % Oral administration
-        [t,y]=ode23(@(t,y)minPBPKlargePO(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
+    if handles.radiobuttonEV.Value==1    % Extravascular administration
+        [t,y]=ode23(@(t,y)minPBPKlargeEV(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.Vtight;
         y(:,3)=y(:,3)./s.Vtight;
@@ -1904,8 +1944,11 @@ else   % large molecules
     % err1=sum((log10(data.y)-log10(iny)).^2); % for fmincon
     if handles.radiobuttonPO.Value==1 % Oral
         err1=(((data.y)-(iny)).^2);
-    else
-        err1=((log10(data.y)-log10(iny)).^2);
+    else if handles.radiobuttonEV.Value==1 % Oral
+            err1=(((data.y)-(iny)).^2);
+        else
+            err1=((log10(data.y)-log10(iny)).^2);
+        end
     end
     
     
@@ -2106,6 +2149,7 @@ if tf==1
     set(handles.editEp15,'Visible','off')
     set(handles.editCIp15,'Visible','off')
     set(handles.checkboxs15,'Visible','off')
+    set(handles.radiobuttonPO,'Visible','on')
 else
     set(handles.radiobuttonCentral,'Value',1)
     set(handles.uibuttongroupTMDD,'Visible','on')
@@ -2127,7 +2171,7 @@ else
     set(handles.edit8,'String','0.512')
     set(handles.textp9,'String','Plasma clearance - CLp [volume/time] :','horizontalalignment','left')
     set(handles.edit9,'String','0.001')
-    set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume] :','horizontalalignment','left')
+    set(handles.textp10,'String','Steady state constant - Kss [mass/volume] :','horizontalalignment','left')
     set(handles.edit10,'String','0.1')
     set(handles.textp10,'Visible','on')
     set(handles.edit10,'Visible','on')
@@ -2136,7 +2180,7 @@ else
     set(handles.editEp10,'Visible','on')
     set(handles.editCIp10,'Visible','on')
     set(handles.checkboxs10,'Visible','on')
-    set(handles.textp11,'String','Complex dissociation rate - ksyn [mass/volume/time] :','horizontalalignment','left')
+    set(handles.textp11,'String','Target biosynthesis rate - ksyn [mass/volume/time] :','horizontalalignment','left')
     set(handles.edit11,'String','0.001')
     set(handles.textp11,'Visible','on')
     set(handles.edit11,'Visible','on')
@@ -2145,7 +2189,7 @@ else
     set(handles.editEp11,'Visible','on')
     set(handles.editCIp11,'Visible','on')
     set(handles.checkboxs11,'Visible','on')
-    set(handles.textp14,'String','Target biosynthesis rate - kdeg [1/time] :','horizontalalignment','left')
+    set(handles.textp14,'String','Free target degradation rate - kdeg [1/time] :','horizontalalignment','left')
     set(handles.edit14,'String','0.1')
     set(handles.textp14,'Visible','on')
     set(handles.edit14,'Visible','on')
@@ -2154,7 +2198,7 @@ else
     set(handles.editEp14,'Visible','on')
     set(handles.editCIp14,'Visible','on')
     set(handles.checkboxs14,'Visible','on')
-    set(handles.textp15,'String','Free target degradation rate - kint [1/time] :','horizontalalignment','left')
+    set(handles.textp15,'String','Complex internalization rate - kint [1/time] :','horizontalalignment','left')
     set(handles.edit15,'String','0.0117')
     set(handles.textp15,'Visible','on')
     set(handles.edit15,'Visible','on')
@@ -2163,6 +2207,7 @@ else
     set(handles.editEp15,'Visible','on')
     set(handles.editCIp15,'Visible','on')
     set(handles.checkboxs15,'Visible','on')
+    set(handles.radiobuttonPO,'Visible','off')
 end
 
 
@@ -3829,6 +3874,13 @@ if handles.popupmenuModel.Value==1          % If small molecules
             y(:,3)=y(:,3)./s.V2;
             y(:,4)=y(:,4)./s.Vhep;
         end
+        if handles.radiobuttonEV.Value==1
+            [t,y]=ode23(@(t,y)minPBPKev(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
+            y(:,1)=y(:,1)./s.Vp;
+            y(:,2)=y(:,2)./s.V1;
+            y(:,3)=y(:,3)./s.V2;
+            y(:,4)=y(:,4)./s.Vhep;
+        end
         auc1(i)=auccalc(t,y(:,1));
         cmax1(i)=cmaxcalc(y(:,1));
         
@@ -3901,7 +3953,7 @@ if handles.popupmenuModel.Value==1          % If small molecules
         s.V2=s.BW-s.V1-s.Vp-s.Vhep;
         
         
-        % For oral administration
+        % For oral/extravascular administration
         if nzi(i)==12
             par1(i)=s.Fg;
             s.Fg=s.Fg+0.1*s.Fg;
@@ -3938,6 +3990,13 @@ if handles.popupmenuModel.Value==1          % If small molecules
             y(:,3)=y(:,3)./s.V2;
             y(:,4)=y(:,4)./s.Vhep;
         end
+        if handles.radiobuttonEV.Value==1
+            [t,y]=ode23(@(t,y)minPBPKev(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
+            y(:,1)=y(:,1)./s.Vp;
+            y(:,2)=y(:,2)./s.V1;
+            y(:,3)=y(:,3)./s.V2;
+            y(:,4)=y(:,4)./s.Vhep;
+        end
         auc2(i)=auccalc(t,y(:,1));
         cmax2(i)=cmaxcalc(y(:,1));
         siauc(i)=(((auc2(i)-auc1(i))/auc1(i))/((par2(i)-par1(i))/par1(i)))^2;
@@ -3960,7 +4019,7 @@ else     % for large molecules
     cbvs(9)=get(handles.checkboxs9,'Value');
     cbvs(10)=get(handles.checkboxs10,'Value');
     cbvs(11)=get(handles.checkboxs11,'Value');
-    % For oral administration
+    % For oral/extravascular administration
     cbvs(12)=get(handles.checkboxs12,'Value');
     cbvs(13)=get(handles.checkboxs13,'Value');
     % Back to IV
@@ -3996,7 +4055,7 @@ else     % for large molecules
         s.Vleaky=0.35*s.ISF*s.Kp;                    %Vleaky
         s.Rb=s.ksyn/s.kdeg;                          % Receptor bound
         
-        % Oral adminisration
+        % Oral/extravascular adminisration
         s.Fg=str2num(handles.edit12.String);         %Fg
         s.ka=str2num(handles.edit13.String);         %ka
         
@@ -4024,8 +4083,8 @@ else     % for large molecules
         
         
         % Run simulation
-        if handles.radiobuttonPO.Value==1    % Oral administration
-            [t,y]=ode23(@(t,y)minPBPKlargePO(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
+        if handles.radiobuttonEV.Value==1    % Oral administration
+            [t,y]=ode23(@(t,y)minPBPKlargeEV(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.Vtight;
         y(:,3)=y(:,3)./s.Vtight;
@@ -4121,7 +4180,7 @@ else     % for large molecules
             kp{i}='ksyn';
         end
         
-        % For oral administration
+        % For oral/extravascular administration
         if nzi(i)==12
             par1(i)=s.Fg;
             s.Fg=s.Fg+0.1*s.Fg;
@@ -4168,8 +4227,8 @@ else     % for large molecules
         
         
         % Run simulation
-        if handles.radiobuttonPO.Value==1    % Oral administration
-            [t,y]=ode23(@(t,y)minPBPKlargePO(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
+        if handles.radiobuttonEV.Value==1    % Oral administration
+            [t,y]=ode23(@(t,y)minPBPKlargeEV(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.Vtight;
         y(:,3)=y(:,3)./s.Vtight;
@@ -4732,6 +4791,13 @@ if handles.popupmenuModel.Value==1          % If small molecules
         y(:,3)=y(:,3)./s.V2;
         y(:,4)=y(:,4)./s.Vhep;
     end
+    if handles.radiobuttonEV.Value==1    % Oral administration
+        [t,y]=ode23(@(t,y)minPBPKev(t,y,s),[0 s.tfinal],[0,0,0,0,s.dose]);
+        y(:,1)=y(:,1)./s.Vp;
+        y(:,2)=y(:,2)./s.V1;
+        y(:,3)=y(:,3)./s.V2;
+        y(:,4)=y(:,4)./s.Vhep;
+    end
     
     y2=[t y];
     col_header={'Time','Cp','C1','C2','Chepatic'};
@@ -4793,8 +4859,8 @@ else    % Else large molecule model
     
 
     % Run simulation
-    if handles.radiobuttonPO.Value==1    % Oral administration
-        [t,y]=ode23(@(t,y)minPBPKlargePO(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
+    if handles.radiobuttonEV.Value==1    % Oral administration
+        [t,y]=ode23(@(t,y)minPBPKlargeEV(t,y,s),[0 s.tfinal],[0,0,s.ksyn/s.kdeg,0,s.ksyn/s.kdeg,0,s.dose]);
         y(:,1)=y(:,1)./s.Vp;
         y(:,2)=y(:,2)./s.Vtight;
         y(:,3)=y(:,3)./s.Vtight;
@@ -4924,7 +4990,7 @@ function radiobuttonCentral_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of radiobuttonCentral
 if handles.radiobuttonCentral.Value==1 
-set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume] :','horizontalalignment','left')
+set(handles.textp10,'String','Steady state constant - Kss [mass/volume] :','horizontalalignment','left')
     set(handles.textp10,'Visible','on')
     set(handles.edit10,'Visible','on')
     set(handles.checkbox10,'Visible','on')
@@ -4932,7 +4998,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp10,'Visible','on')
     set(handles.editCIp10,'Visible','on')
     set(handles.checkboxs10,'Visible','on')
-    set(handles.textp11,'String','Complex dissociation rate - ksyn [mass/volume/time] :','horizontalalignment','left')
+    set(handles.textp11,'String','Target biosynthesis rate - ksyn [mass/volume/time] :','horizontalalignment','left')
     set(handles.textp11,'Visible','on')
     set(handles.edit11,'Visible','on')
     set(handles.checkbox11,'Visible','on')
@@ -4940,7 +5006,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp11,'Visible','on')
     set(handles.editCIp11,'Visible','on')
     set(handles.checkboxs11,'Visible','on')
-    set(handles.textp14,'String','Target biosynthesis rate - kdeg [1/time] :','horizontalalignment','left')
+    set(handles.textp14,'String','Free target degradation rate - kdeg [1/time] :','horizontalalignment','left')
     set(handles.textp14,'Visible','on')
     set(handles.edit14,'Visible','on')
     set(handles.checkbox14,'Visible','on')
@@ -4948,7 +5014,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp14,'Visible','on')
     set(handles.editCIp14,'Visible','on')
     set(handles.checkboxs14,'Visible','on')
-    set(handles.textp15,'String','Free target degradation rate - kint [1/time] :','horizontalalignment','left')
+    set(handles.textp15,'String','Complex internalization rate - kint [1/time] :','horizontalalignment','left')
     set(handles.textp15,'Visible','on')
     set(handles.edit15,'Visible','on')
     set(handles.checkbox15,'Visible','on')
@@ -4966,7 +5032,7 @@ function radiobuttonPeripheral_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of radiobuttonPeripheral
 if handles.radiobuttonPeripheral.Value==1 
-set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume] :','horizontalalignment','left')
+set(handles.textp10,'String','Steady state constant - Kss [mass/volume] :','horizontalalignment','left')
     set(handles.textp10,'Visible','on')
     set(handles.edit10,'Visible','on')
     set(handles.checkbox10,'Visible','on')
@@ -4974,7 +5040,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp10,'Visible','on')
     set(handles.editCIp10,'Visible','on')
     set(handles.checkboxs10,'Visible','on')
-    set(handles.textp11,'String','Complex dissociation rate - ksyn [mass/volume/time] :','horizontalalignment','left')
+    set(handles.textp11,'String','Target biosynthesis rate - ksyn [mass/volume/time] :','horizontalalignment','left')
     set(handles.textp11,'Visible','on')
     set(handles.edit11,'Visible','on')
     set(handles.checkbox11,'Visible','on')
@@ -4982,7 +5048,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp11,'Visible','on')
     set(handles.editCIp11,'Visible','on')
     set(handles.checkboxs11,'Visible','on')
-    set(handles.textp14,'String','Target biosynthesis rate - kdeg [1/time] :','horizontalalignment','left')
+    set(handles.textp14,'String','Free target degradation rate - kdeg [1/time] :','horizontalalignment','left')
     set(handles.textp14,'Visible','on')
     set(handles.edit14,'Visible','on')
     set(handles.checkbox14,'Visible','on')
@@ -4990,7 +5056,7 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp14,'Visible','on')
     set(handles.editCIp14,'Visible','on')
     set(handles.checkboxs14,'Visible','on')
-    set(handles.textp15,'String','Free target degradation rate - kint [1/time] :','horizontalalignment','left')
+    set(handles.textp15,'String','Complex internalization rate - kint [1/time] :','horizontalalignment','left')
     set(handles.textp15,'Visible','on')
     set(handles.edit15,'Visible','on')
     set(handles.checkbox15,'Visible','on')
@@ -4998,4 +5064,17 @@ set(handles.textp10,'String','Drug receptor association rate - Kss [mass/volume]
     set(handles.editEp15,'Visible','on')
     set(handles.editCIp15,'Visible','on')
     set(handles.checkboxs15,'Visible','on')
+end
+
+
+% --- Executes on button press in radiobuttonEV.
+function radiobuttonEV_Callback(hObject, eventdata, handles)
+% hObject    handle to radiobuttonEV (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of radiobuttonEV
+if handles.radiobuttonEV.Value==1
+    set(handles.editINFtime,'Visible','off')
+    set(handles.textINFtime,'Visible','off')
 end
