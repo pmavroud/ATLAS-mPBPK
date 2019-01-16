@@ -433,7 +433,7 @@ else    % Else large molecule model
     s.sigma1=str2num(handles.edit7.String);      %Tight tissues refl. coeff.
     s.sigma2=str2num(handles.edit8.String);      %Leaky tissues refl. coeff.
     s.CLp=str2num(handles.edit9.String);         %CLp
-    s.Kss=str2num(handles.edit10.String);        %kon
+    s.Kss=str2num(handles.edit10.String);        %Kss
     s.ksyn=str2num(handles.edit11.String);       %ksyn
     s.kdeg=str2num(handles.edit14.String);       %kdeg
     s.kint=str2num(handles.edit15.String);       %kint
@@ -1372,7 +1372,7 @@ else     % large molecules
         set(handles.editCIp9, 'String', '')
         set(handles.editlbub9, 'String', '')
     end
-    s.kon=str2num(handles.edit10.String);     %kon
+    s.Kss=str2num(handles.edit10.String);     %Kss
     if cbv(10)==1
         p(x)=s.Kss;
         x=x+1;
@@ -1383,7 +1383,7 @@ else     % large molecules
         set(handles.editCIp10, 'String', '')
         set(handles.editlbub10, 'String', '')
     end
-    s.ksyn=str2num(handles.edit11.String);       %koff
+    s.ksyn=str2num(handles.edit11.String);       %ksyn
     if cbv(11)==1
         p(x)=s.ksyn;
         x=x+1;
@@ -4820,7 +4820,7 @@ else    % Else large molecule model
     s.sigma1=str2num(handles.edit7.String);      %Tight tissues refl. coeff.
     s.sigma2=str2num(handles.edit8.String);      %Leaky tissues refl. coeff.
     s.CLp=str2num(handles.edit9.String);         %CLp
-    s.Kss=str2num(handles.edit10.String);        %kon
+    s.Kss=str2num(handles.edit10.String);        %Kss
     s.ksyn=str2num(handles.edit11.String);       %koff
     s.kdeg=str2num(handles.edit14.String);       %ksyn
     s.kint=str2num(handles.edit15.String);       %kdeg
